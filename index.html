@@ -20,12 +20,11 @@
  */
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 450;
-const WORLD_WIDTH = 8000; // Çok uzun Terraria dünyası
+const WORLD_WIDTH = 8000;
 
 class BootScene extends Phaser.Scene {
     constructor() { super('BootScene'); }
     preload() {
-        // Profesyonel Yükleme Ekranı
         let progress = this.add.graphics();
         this.load.on('progress', (v) => {
             progress.clear();
@@ -33,18 +32,11 @@ class BootScene extends Phaser.Scene {
             progress.fillRect(200, 220, 400 * v, 15);
         });
 
-        // ASSETLER
         this.load.image('sky', 'https://labs.phaser.io/assets/skies/sky4.png');
         this.load.image('dirt', 'https://labs.phaser.io/assets/sprites/platform.png');
-        this.load.image('grass', 'https://labs.phaser.io/assets/sprites/platform.png');
         this.load.image('apple', 'https://labs.phaser.io/assets/sprites/apple.png');
         this.load.image('boss_eye', 'https://labs.phaser.io/assets/sprites/slime.png');
-        this.load.image('gate', 'https://labs.phaser.io/assets/sprites/longarrow.png');
-        this.load.image('particle', 'https://labs.phaser.io/assets/particles/white.png');
         this.load.spritesheet('hero', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
-        
-        // UI Tuşları
-        this.load.image('btn_left', 'https://labs.phaser.io/assets/sprites/arrow.png');
     }
     create() { this.scene.start('MenuScene'); }
 }
@@ -84,7 +76,6 @@ class GameScene extends Phaser.Scene {
         this.bossHP = 100 + (this.level * 100);
         this.maxBossHP = this.bossHP;
         this.isAttacking = false;
-        this.gold = 0;
         this.isDead = false;
     }
 
@@ -92,51 +83,34 @@ class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, WORLD_WIDTH, GAME_HEIGHT + 200);
         this.add.image(0, 0, 'sky').setOrigin(0).setScale(8).setTint(0x444444);
 
-        // HARİTA OLUŞTURMA
-        this.createTerrariaWorld();
+        this.platforms = this.physics.add.staticGroup();
+        for(let i = 0; i < WORLD_WIDTH / 128; i++) {
+            this.platforms.create(i * 128, 430, 'dirt').setTint(0x5d4037).refreshBody();
+            if(i > 5 && Math.random() < 0.2) {
+                this.platforms.create(i * 128, Phaser.Math.Between(150, 300), 'dirt').setScale(0.5).setTint(0x2ecc71).refreshBody();
+            }
+        }
 
-        // KARAKTER
         this.player = this.physics.add.sprite(200, 300, 'hero');
         this.player.setCollideWorldBounds(true).setScale(1.2).setTint(0x3498db);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
         this.cameras.main.setBounds(0, 0, WORLD_WIDTH, GAME_HEIGHT);
 
-        // GELİŞMİŞ BOSS AI
-        this.createBoss();
-
-        // KONTROL TUŞLARI (EKRAN ÜZERİ)
-        this.createVirtualJoystick();
-
-        // HUD & UI
-        this.createHUD();
-        
-        // FİZİK ETKİLEŞİMLERİ
-        this.setupPhysics();
-
-        // KLAVYE
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.keySpace = this.input.keyboard.addKey('SPACE');
-        this.keyShift = this.input.keyboard.addKey('SHIFT');
-    }
-
-    createTerrariaWorld() {
-        this.platforms = this.physics.add.staticGroup();
-        for(let i = 0; i < WORLD_WIDTH / 128; i++) {
-            // Zemin
-            this.platforms.create(i * 128, 430, 'dirt').setTint(0x5d4037).refreshBody();
-            // Rastgele Mağara Blokları
-            if(i > 5 && Math.random() < 0.2) {
-                this.platforms.create(i * 128, Phaser.Math.Between(150, 300), 'dirt').setScale(0.5).setTint(0x2ecc71).refreshBody();
-            }
-        }
-    }
-
-    createBoss() {
         let spawnX = 1500 + (this.level * 200);
         this.boss = this.physics.add.sprite(spawnX, 350, 'boss_eye');
         this.boss.setTint(0xe74c3c).setScale(2 + (this.level * 0.2)).setBounce(0.5);
         this.boss.setCollideWorldBounds(true);
         this.boss.nextJump = 0;
+
+        this.createVirtualJoystick();
+        this.createHUD();
+        
+        this.physics.add.collider(this.player, this.platforms);
+        this.physics.add.collider(this.boss, this.platforms);
+        this.physics.add.overlap(this.player, this.boss, this.handleDamage, null, this);
+
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.keySpace = this.input.keyboard.addKey('SPACE');
     }
 
     createVirtualJoystick() {
@@ -147,7 +121,6 @@ class GameScene extends Phaser.Scene {
         this.btnAttack = this.add.text(650, 250, ' ⚔ ', style).setScrollFactor(0).setInteractive();
 
         this.inputState = { left: false, right: false, jump: false };
-
         this.btnLeft.on('pointerdown', () => this.inputState.left = true);
         this.btnLeft.on('pointerup', () => this.inputState.left = false);
         this.btnRight.on('pointerdown', () => this.inputState.right = true);
@@ -162,17 +135,10 @@ class GameScene extends Phaser.Scene {
         this.infoText = this.add.text(20, 60, '', { fontSize: '18px', fill: '#f1c40f' }).setScrollFactor(0);
     }
 
-    setupPhysics() {
-        this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.collider(this.boss, this.platforms);
-        this.physics.add.overlap(this.player, this.boss, this.handleDamage, null, this);
-    }
-
     update(time) {
         if(this.isDead) return;
 
-        // HAREKET
-        let speed = this.keyShift.isDown ? 550 : 300;
+        let speed = 300;
         if (this.cursors.left.isDown || this.inputState.left) {
             this.player.setVelocityX(-speed);
             this.player.flipX = true;
@@ -189,7 +155,6 @@ class GameScene extends Phaser.Scene {
 
         if (Phaser.Input.Keyboard.JustDown(this.keySpace)) this.executeAttack();
 
-        // BOSS AI: AKILLI TAKİP VE ZIPLAMA
         if(this.boss.active) {
             let dist = this.player.x - this.boss.x;
             if(Math.abs(dist) < 1200) {
@@ -200,14 +165,12 @@ class GameScene extends Phaser.Scene {
                 }
             }
         }
-
         this.drawUI();
     }
 
     executeAttack() {
         if(this.isAttacking) return;
         this.isAttacking = true;
-        
         let range = this.add.rectangle(this.player.x + (this.player.flipX ? -60 : 60), this.player.y, 80, 40, 0xffffff, 0.3);
         
         if(this.boss.active && Phaser.Geom.Intersects.RectangleToRectangle(range.getBounds(), this.boss.getBounds())) {
@@ -216,7 +179,6 @@ class GameScene extends Phaser.Scene {
             this.time.delayedCall(100, () => this.boss.setTint(0xe74c3c));
             if(this.bossHP <= 0) this.killBoss();
         }
-
         this.time.delayedCall(200, () => { range.destroy(); this.isAttacking = false; });
     }
 
@@ -233,20 +195,17 @@ class GameScene extends Phaser.Scene {
         this.time.delayedCall(100, () => this.player.setTint(0x3498db));
         if(this.playerHP <= 0) {
             this.isDead = true;
-            alert("Öldün! Seviye: " + this.level);
             this.scene.start('MenuScene');
         }
     }
 
     drawUI() {
         this.hud.clear();
-        // Player HP
         this.hud.fillStyle(0x000000, 0.5);
         this.hud.fillRect(20, 20, 200, 20);
         this.hud.fillStyle(0xe74c3c, 1);
         this.hud.fillRect(20, 20, this.playerHP * 2, 20);
 
-        // Boss HP
         if(this.boss.active) {
             this.hud.fillStyle(0x000000, 0.5);
             this.hud.fillRect(580, 20, 200, 20);

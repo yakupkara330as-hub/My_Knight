@@ -3,22 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Apple Cells: Redemption | Yakup Kara</title>
+    <title>Apple Cells: Last Chance | Yakup Kara</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background: #87CEEB; overflow: hidden; touch-action: none; }
-        #ui-layer { position: absolute; top: 10px; left: 10px; color: #fff; font-family: monospace; z-index: 100; background: rgba(0,0,0,0.5); padding: 10px; }
+        body { margin: 0; background: #87CEEB; overflow: hidden; touch-action: none; }
+        #hud { position: absolute; top: 10px; left: 10px; color: #fff; font-family: 'Courier New'; background: rgba(0,0,0,0.7); padding: 10px; border: 2px solid #0f0; z-index: 100; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="ui-layer">YAKUP OS: AKTİF | CAN: <span id="hp">100</span> | BOSS CANI: <span id="bhp">500</span></div>
+    <div id="hud">SİSTEM: KRİTİK MOD | OPERATOR: YAKUP | BOSS CANI: <span id="bhp">1000</span></div>
 
 <script>
-class AppleCellsRedemption extends Phaser.Scene {
+class LastChance extends Phaser.Scene {
     constructor() {
-        super('AppleCellsRedemption');
-        this.playerHP = 100;
-        this.bossHP = 500;
+        super('LastChance');
+        this.bossHP = 1000;
     }
 
     preload() {
@@ -29,86 +28,88 @@ class AppleCellsRedemption extends Phaser.Scene {
     }
 
     create() {
-        this.physics.world.setBounds(0, 0, 15000, 2000);
-        this.add.tileSprite(0, 0, 15000, 2000, 'sky').setOrigin(0);
+        // Dev Harita (20.000 Metre)
+        this.physics.world.setBounds(0, 0, 20000, 2000);
+        this.add.tileSprite(0, 0, 20000, 2000, 'sky').setOrigin(0);
 
-        // PLATFORMLAR (Düzeltilmiş Yükseklik)
         this.platforms = this.physics.add.staticGroup();
-        for (let i = 0; i < 15000; i += 400) {
-            this.platforms.create(i, 1950, 'platform').setScale(2).refreshBody().setTint(0x444444);
+        // Zemin
+        for (let i = 0; i < 20000; i += 400) {
+            this.platforms.create(i, 1950, 'platform').setScale(2).refreshBody().setTint(0x222222);
         }
-        // Atlanabilir platformlar (Zıplama gücüne göre ayarlandı)
-        this.platforms.create(800, 1750, 'platform').refreshBody();
-        this.platforms.create(1300, 1600, 'platform').refreshBody();
-        this.platforms.create(1800, 1450, 'platform').refreshBody();
 
-        // OYUNCU (Yakup)
-        this.player = this.physics.add.sprite(200, 1800, 'hero').setScale(2.5).setDepth(5);
+        // Platformlar (Zıplama mesafesi tam ayarlı)
+        this.platforms.create(800, 1720, 'platform').refreshBody();
+        this.platforms.create(1300, 1500, 'platform').refreshBody();
+        this.platforms.create(1800, 1300, 'platform').refreshBody();
+
+        // Karakter (Yakup)
+        this.player = this.physics.add.sprite(200, 1800, 'hero').setScale(2.5).setDepth(10);
         this.player.setCollideWorldBounds(true);
-        this.player.body.setGravityY(3500);
+        this.player.body.setGravityY(3800);
 
-        // BOSS (Gerçek ve Orada)
-        this.boss = this.physics.add.sprite(14500, 1800, 'boss').setScale(10).setTint(0xff0000);
+        // BOSS (Gerçekten orada ve can barı var)
+        this.boss = this.physics.add.sprite(19500, 1700, 'boss').setScale(15).setTint(0xff0000);
         this.boss.setImmovable(true);
 
-        // KONTROLLER
+        // KONTROLLER (WASD)
         this.keys = this.input.keyboard.addKeys({
             W: 'W', A: 'A', S: 'S', D: 'D', SPACE: 'SPACE'
         });
 
-        // MOBİL BUTONLAR (KAYBOLMAZ)
+        // MOBİL BUTONLAR (Kayıp olmayan devasa tuşlar)
         this.createMobileUI();
 
-        // KAMERA
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-        this.cameras.main.setBounds(0, 0, 15000, 2000);
+        this.cameras.main.setBounds(0, 0, 20000, 2000);
 
-        // FİZİK
         this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.overlap(this.player, this.boss, this.fightBoss, null, this);
+        this.physics.add.overlap(this.player, this.boss, this.hitBoss, null, this);
     }
 
     createMobileUI() {
         const sw = window.innerWidth;
         const sh = window.innerHeight;
-        const s = { fontSize: '70px', backgroundColor: '#000', padding: 20 };
+        const s = { fontSize: '80px', backgroundColor: '#000000cc', padding: 25, borderRadius: '15px' };
 
-        this.btnL = this.add.text(50, sh - 150, '◀', s).setInteractive().setScrollFactor(0).setDepth(200);
-        this.btnR = this.add.text(250, sh - 150, '▶', s).setInteractive().setScrollFactor(0).setDepth(200);
-        this.btnJ = this.add.text(sw - 400, sh - 150, '▲', s).setInteractive().setScrollFactor(0).setDepth(200); // Zıplama
-        this.btnA = this.add.text(sw - 200, sh - 150, '⚔', { ...s, backgroundColor: '#f00' }).setInteractive().setScrollFactor(0).setDepth(200); // Vurma
+        this.btnL = this.add.text(50, sh - 220, '◀', s).setInteractive().setScrollFactor(0).setDepth(200);
+        this.btnR = this.add.text(320, sh - 220, '▶', s).setInteractive().setScrollFactor(0).setDepth(200);
+        this.btnJ = this.add.text(sw - 500, sh - 220, '▲', s).setInteractive().setScrollFactor(0).setDepth(200);
+        this.btnA = this.add.text(sw - 230, sh - 220, '⚔', { ...s, backgroundColor: '#aa0000cc' }).setInteractive().setScrollFactor(0).setDepth(200);
 
-        this.touch = { L: false, R: false, J: false };
-        this.btnL.on('pointerdown', () => this.touch.L = true);
-        this.btnL.on('pointerup', () => this.touch.L = false);
-        this.btnR.on('pointerdown', () => this.touch.R = true);
-        this.btnR.on('pointerup', () => this.touch.R = false);
-        this.btnJ.on('pointerdown', () => this.touch.J = true);
-        this.btnJ.on('pointerup', () => this.touch.J = false);
-        this.btnA.on('pointerdown', () => this.attackAction());
+        this.m = { L: false, R: false, J: false };
+        this.btnL.on('pointerdown', () => this.m.L = true);
+        this.btnL.on('pointerup', () => this.m.L = false);
+        this.btnR.on('pointerdown', () => this.m.R = true);
+        this.btnR.on('pointerup', () => this.m.R = false);
+        this.btnJ.on('pointerdown', () => this.m.J = true);
+        this.btnJ.on('pointerup', () => this.m.J = false);
+        this.btnA.on('pointerdown', () => this.attack());
     }
 
-    attackAction() {
-        this.player.setTint(0xffff00);
+    attack() {
+        this.player.setTint(0xff0000);
         this.time.delayedCall(100, () => this.player.clearTint());
-        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.boss.x, this.boss.y) < 500) {
-            this.bossHP -= 10;
+        if(Phaser.Math.Distance.Between(this.player.x, this.player.y, this.boss.x, this.boss.y) < 600) {
+            this.bossHP -= 20;
             document.getElementById('bhp').innerText = this.bossHP;
         }
     }
 
     update() {
-        if (this.keys.A.isDown || this.touch.L) this.player.setVelocityX(-700);
-        else if (this.keys.D.isDown || this.touch.R) this.player.setVelocityX(700);
+        // Hareket (WASD + Mobil)
+        if (this.keys.A.isDown || this.m.L) this.player.setVelocityX(-850);
+        else if (this.keys.D.isDown || this.m.R) this.player.setVelocityX(850);
         else this.player.setVelocityX(0);
 
-        if ((this.keys.W.isDown || this.touch.J) && this.player.body.touching.down) {
-            this.player.setVelocityY(-1650); // Artırılmış zıplama gücü
+        // Zıplama (W = Zıplama, Space = Vurma)
+        if ((this.keys.W.isDown || this.m.J) && this.player.body.touching.down) {
+            this.player.setVelocityY(-1750);
         }
 
-        // SPACE = VURMA SİSTEMİ
+        // Space Tuşu ile Vurma
         if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) {
-            this.attackAction();
+            this.attack();
         }
     }
 }
@@ -117,8 +118,8 @@ const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
     height: window.innerHeight,
-    physics: { default: 'arcade', arcade: { gravity: { y: 3500 } } },
-    scene: [AppleCellsRedemption]
+    physics: { default: 'arcade', arcade: { gravity: { y: 3800 } } },
+    scene: [LastChance]
 };
 new Phaser.Game(config);
 </script>

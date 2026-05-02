@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Yakup Knight Cells v2</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; }
+        canvas { display: block; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 450,
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 1200 }, debug: false }
+    },
+    scene: { preload: preload, create: create, update: update }
+};
+
+const game = new Phaser.Game(config);
+let player, cursors, platforms, enemies, attackKey;
+
+function preload() {
+    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.spritesheet('knight', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
+    this.load.image('slime', 'https://labs.phaser.io/assets/sprites/slime.png');
+}
+
+function create() {
+    // Dünya Sınırlarını Genişlet (Dead Cells haritası gibi uzun olsun)
+    this.physics.world.setBounds(0, 0, 2400, 600);
+
+    // Platformlar
+    platforms = this.physics.add.staticGroup();
+    for (let i = 0; i < 5; i++) {
+        platforms.create(400 + (i * 500), 430, 'ground').setScale(2).refreshBody();
+    }
+    platforms.create(600, 300, 'ground');
+    platforms.create(1100, 250, 'ground');
+    platforms.create(1600, 320, 'ground');
+
+    // Oyuncu
+    player = this.physics.add.sprite(100, 300, 'knight');
+    player.setCollideWorldBounds(true);
+    player.setTint(0xff3333); // Karanlık şövalye havası
+
+    // Kamera Takibi (En Önemli Kısım!)
+    this.cameras.main.setBounds(0, 0, 2400, 600);
+    this.cameras.main.startFollow(player, true, 0.08, 0.08);
+
+    // Düşmanlar (Slime Grubu)
+    enemies = this.physics.add.group();
+    let s1 = enemies.create(700, 380, 'slime');
+    s1.setCollideWorldBounds(true);
+    s1.setVelocityX(100);
+
+    // Animasyonlar
+    this.anims.create({
+        key: 'walk',
+        frames: this.anims.generateFrameNumbers('knight', { start: 5, end: 8 }),
+        frameRate: 12,
+        repeat: -1
+    });
+
+    // Çarpışmalar
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(enemies, platforms);
+    this.physics.add.overlap(player, enemies, hitEnemy, null, this);
+
+    cursors = this.input.keyboard.createCursorKeys();
+}
+
+function update() {
+    if (cursors.left.isDown) {
+        player.setVelocityX(-250);
+        player.anims.play('walk', true);
+        player.flipX = true;
+    } else if (cursors.right.isDown) {
+        player.setVelocityX(250);
+        player.anims.play('walk', true);
+        player.flipX = false;
+    } else {
+        player.setVelocityX(0);
+        player.anims.stop();
+    }
+
+    if (cursors.up.isDown && player.body.touching.down) {
+        player.setVelocityY(-600);
+    }
+
+    // Düşman Yapay Zekası (Basit Sağa-Sola Gitme)
+    enemies.children.iterate(function (child) {
+        if (child.body.blocked.right) child.setVelocityX(-100);
+        if (child.body.blocked.left) child.setVelocityX(100);
+    });
+}
+
+function hitEnemy(player, enemy) {
+    player.setTint(0xffffff);
+    this.time.delayedCall(200, () => player.setTint(0xff3333));
+    // Buraya can azaltma sistemi eklenecek
+}
+</script>
+
+</body>
+</html>

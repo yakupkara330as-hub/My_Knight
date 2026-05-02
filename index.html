@@ -1,21 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Knight Knight: Apple Cells</title>
+    <title>Knight Knight: Apple Cells v3</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #2c3e50; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
-        canvas { display: block; margin: 0 auto; border: 4px solid #ecf0f1; }
+        body { margin: 0; background: #34495e; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; margin: 0 auto; border: 5px solid #2ecc71; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
 <script>
-let player, cursors, platforms, coins, enemies, scoreText, levelText;
+let player, cursors, platforms, coins, enemies, scoreText, levelText, swordEffect;
 let score = 0;
 let currentLevel = 1;
 let canAttack = true;
-let isDead = false;
 
 const config = {
     type: Phaser.AUTO,
@@ -23,7 +22,7 @@ const config = {
     height: 450,
     physics: {
         default: 'arcade',
-        arcade: { gravity: { y: 1200 }, debug: false }
+        arcade: { gravity: { y: 1300 }, debug: false }
     },
     scene: { preload: preload, create: create, update: update }
 };
@@ -31,140 +30,143 @@ const config = {
 const game = new Phaser.Game(config);
 
 function preload() {
-    // Apple Knight tarzı daha canlı renkler
-    this.load.image('sky', 'https://labs.phaser.io/assets/skies/big-clouds.png');
-    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
-    this.load.image('coin', 'https://labs.phaser.io/assets/sprites/apple.png'); // Para yerine elma!
-    this.load.image('slime', 'https://labs.phaser.io/assets/sprites/slime.png');
-    this.load.spritesheet('knight', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
+    // Apple Knight tarzı canlı grafikler için assetler
+    this.load.image('background', 'https://labs.phaser.io/assets/skies/sky4.png');
+    this.load.image('block', 'https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.image('gold', 'https://labs.phaser.io/assets/sprites/apple.png'); 
+    this.load.image('enemy', 'https://labs.phaser.io/assets/sprites/slime.png');
+    this.load.spritesheet('hero', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
 }
 
 function create() {
-    // Menü Sistemi (Şimdilik basit bir giriş)
-    if (confirm("Seviye Seç: 1-10 Arası (Tamam dersen Seviye " + currentLevel + " başlar)")) {
-        setupGame.call(this);
-    }
-}
+    // Arka Plan
+    this.add.image(400, 300, 'background').setScale(2).setScrollFactor(0);
 
-function setupGame() {
-    this.add.image(400, 225, 'sky').setScrollFactor(0).setScale(2);
-
+    // Platformlar (Apple Knight Renkleri)
     platforms = this.physics.add.staticGroup();
-    // Seviyeye göre platformları uzat
-    for (let i = 0; i < currentLevel + 2; i++) {
-        platforms.create(400 * i, 420, 'ground').setScale(2).refreshBody();
+    for (let i = 0; i < 10; i++) {
+        platforms.create(i * 400, 430, 'block').setScale(2).setTint(0x27ae60).refreshBody();
     }
-    platforms.create(600, 300, 'ground');
-    platforms.create(1000, 250, 'ground');
+    // Rastgele havada asılı platformlar
+    platforms.create(500, 300, 'block').setTint(0xe67e22);
+    platforms.create(900, 200, 'block').setTint(0xe67e22);
 
-    // Oyuncu (Karakter Güzelleştirme: Mavi Kostüm)
-    player = this.physics.add.sprite(100, 300, 'knight');
-    player.setBounce(0.1);
-    player.setCollideWorldBounds(true);
-    player.setTint(0x3498db); 
+    // Oyuncu (Karakter Güzelleştirme)
+    player = this.physics.add.sprite(100, 350, 'hero');
+    player.setBounce(0.1).setCollideWorldBounds(true).setTint(0xecf0f1);
+
+    // Saldırı Efekti (Kılıç İzi)
+    swordEffect = this.add.rectangle(0, 0, 40, 60, 0xffffff, 0.5);
+    swordEffect.setVisible(false);
 
     // Kamera
-    this.cameras.main.setBounds(0, 0, 2000, 600);
-    this.cameras.main.startFollow(player, true, 0.1, 0.1);
+    this.cameras.main.setBounds(0, 0, 4000, 600);
+    this.cameras.main.startFollow(player, true, 0.05, 0.05);
 
     // Paralar
     coins = this.physics.add.group({
-        key: 'coin',
-        repeat: 10 + (currentLevel * 2),
-        setXY: { x: 300, y: 0, stepX: 150 }
+        key: 'gold',
+        repeat: 20,
+        setXY: { x: 400, y: 0, stepX: 200 }
     });
 
-    // Düşmanlar (Seviye sonu Boss mantığı)
+    // Düşmanlar (Boss ve Slime'lar)
     enemies = this.physics.add.group();
-    let boss = enemies.create(1500, 350, 'slime');
-    boss.setTint(0x000000); // Siyah Dev Slime (Boss)
-    boss.setScale(2 + (currentLevel * 0.5));
-    boss.setVelocityX(100);
+    createEnemies.call(this);
 
     // UI
-    scoreText = this.add.text(16, 16, 'Altın: 0', { fontSize: '24px', fill: '#fff' }).setScrollFactor(0);
-    levelText = this.add.text(650, 16, 'Seviye: ' + currentLevel, { fontSize: '24px', fill: '#f1c40f' }).setScrollFactor(0);
+    scoreText = this.add.text(20, 20, 'Para: 0', { fontSize: '24px', fill: '#f1c40f', stroke: '#000', strokeThickness: 4 }).setScrollFactor(0);
+    levelText = this.add.text(650, 20, 'Seviye: ' + currentLevel, { fontSize: '24px', fill: '#fff', stroke: '#000', strokeThickness: 4 }).setScrollFactor(0);
 
     // Kontroller
     cursors = this.input.keyboard.createCursorKeys();
     attackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     dashKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
 
+    // Animasyonlar
+    this.anims.create({
+        key: 'run',
+        frames: this.anims.generateFrameNumbers('hero', { start: 5, end: 8 }),
+        frameRate: 15,
+        repeat: -1
+    });
+
     // Çarpışmalar
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(enemies, platforms);
     this.physics.add.collider(coins, platforms);
-    this.physics.add.overlap(player, coins, collectCoin, null, this);
-    this.physics.add.overlap(player, enemies, hitEnemy, null, this);
+    this.physics.add.overlap(player, coins, (p, c) => { c.destroy(); score += 10; scoreText.setText('Para: ' + score); }, null, this);
+    this.physics.add.overlap(player, enemies, handleCombat, null, this);
+}
+
+function createEnemies() {
+    for (let i = 1; i <= currentLevel; i++) {
+        let e = enemies.create(800 * i, 350, 'enemy');
+        e.setTint(0xc0392b).setVelocityX(-100).setCollideWorldBounds(true);
+        if (i === currentLevel) { // Bölüm Sonu Boss'u
+            e.setScale(2.5).setTint(0x000000);
+            e.hp = 3;
+        }
+    }
 }
 
 function update() {
-    if (isDead) return;
-
-    // Hız Sistemi (Dead Cells gibi akıcı)
-    let speed = 300;
-    if (dashKey.isDown) speed = 600; // Dash hızı
+    let speed = dashKey.isDown ? 550 : 300; // Dead Cells Dash Hızı
 
     if (cursors.left.isDown) {
         player.setVelocityX(-speed);
+        player.anims.play('run', true);
         player.flipX = true;
     } else if (cursors.right.isDown) {
         player.setVelocityX(speed);
+        player.anims.play('run', true);
         player.flipX = false;
     } else {
         player.setVelocityX(0);
+        player.anims.stop();
     }
 
     if (cursors.up.isDown && player.body.touching.down) {
         player.setVelocityY(-650);
     }
 
-    // Kılıç Saldırısı
+    // SALDIRI SİSTEMİ (Vurduğunu hissetme)
     if (Phaser.Input.Keyboard.JustDown(attackKey) && canAttack) {
-        player.setTint(0xffffff); // Saldırı parlaması
-        canAttack = false;
-        
-        // Saldırı menzilindeki düşmanları yok et
-        enemies.children.iterate((enemy) => {
-            if (enemy && Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y) < 100) {
-                enemy.destroy();
-                score += 50;
-                scoreText.setText('Altın: ' + score);
-                nextLevel.call(this);
-            }
-        });
-
-        this.time.delayedCall(300, () => {
-            player.setTint(0x3498db);
-            canAttack = true;
-        });
+        attack();
     }
 }
 
-function collectCoin(player, coin) {
-    coin.disableBody(true, true);
-    score += 10;
-    scoreText.setText('Altın: ' + score);
+function attack() {
+    canAttack = false;
+    swordEffect.setPosition(player.x + (player.flipX ? -30 : 30), player.y);
+    swordEffect.setVisible(true);
+    player.setTint(0xf1c40f); // Saldırı anında sarı parlama
+
+    game.loop.scene.time.delayedCall(150, () => {
+        swordEffect.setVisible(false);
+        player.setTint(0xecf0f1);
+        canAttack = true;
+    });
 }
 
-function hitEnemy(player, enemy) {
-    if (canAttack === false) return; // Saldırırken hasar almaz
-    this.physics.pause();
-    player.setTint(0xff0000);
-    isDead = true;
-    alert("Öldün! Toplanan Altın: " + score);
-    location.reload();
-}
-
-function nextLevel() {
-    if (currentLevel < 10) {
-        alert("Boss Yenildi! Seviye " + (currentLevel + 1) + " Hazır!");
-        currentLevel++;
-        this.scene.restart();
-    } else {
-        alert("TEBRİKLER! OYUNU BİTİRDİN!");
+function handleCombat(player, enemy) {
+    if (!canAttack) { // Eğer o an saldırıyorsak düşman ölsün
+        enemy.destroy();
+        score += 100;
+        scoreText.setText('Para: ' + score);
+        if (enemies.countActive() === 0) {
+            alert("Seviye Temizlendi! Sıradaki Seviyeye Hazırlan...");
+            currentLevel++;
+            location.reload(); // Şimdilik basitleştirmek için reload
+        }
+    } else { // Saldırmıyorsak biz hasar alalım
+        player.setTint(0xff0000);
+        this.physics.pause();
+        alert("Öldün! Topladığın Para: " + score);
+        location.reload();
     }
 }
 </script>
 </body>
 </html>
+

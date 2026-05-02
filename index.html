@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Apple Cells: Legend of Yakup</title>
+    <title>Apple Cells: Boss Hunter</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #2c3e50; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: #1a1a1a; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
     </style>
 </head>
 <body>
@@ -12,11 +12,10 @@
 class MainMenu extends Phaser.Scene {
     constructor() { super('MainMenu'); }
     create() {
-        this.add.text(400, 80, 'APPLE CELLS', { fontSize: '50px', fill: '#f1c40f', fontStyle: 'bold' }).setOrigin(0.5);
-        this.add.text(400, 130, 'Seviye Seç ve Başla', { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
+        this.add.text(400, 100, 'APPLE CELLS', { fontSize: '50px', fill: '#f1c40f' }).setOrigin(0.5);
         for(let i = 1; i <= 10; i++) {
             let x = 150 + ((i-1) % 5) * 125;
-            let y = 220 + (Math.floor((i-1) / 5)) * 100;
+            let y = 250 + (Math.floor((i-1) / 5)) * 100;
             let btn = this.add.rectangle(x, y, 90, 60, 0x27ae60).setInteractive();
             this.add.text(x, y, 'Lvl ' + i, { fontSize: '22px', fill: '#fff' }).setOrigin(0.5);
             btn.on('pointerdown', () => this.scene.start('PlayGame', { level: i }));
@@ -26,91 +25,123 @@ class MainMenu extends Phaser.Scene {
 
 class PlayGame extends Phaser.Scene {
     constructor() { super('PlayGame'); }
-    init(data) { this.level = data.level; this.score = 0; this.isAttacking = false; }
+    init(data) { 
+        this.level = data.level; 
+        this.playerHP = 100;
+        this.bossHP = 50 + (data.level * 50);
+        this.maxBossHP = this.bossHP;
+        this.isAttacking = false;
+    }
 
     preload() {
         this.load.image('sky', 'https://labs.phaser.io/assets/skies/sky1.png');
         this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
         this.load.image('apple', 'https://labs.phaser.io/assets/sprites/apple.png');
-        this.load.image('boss', 'https://labs.phaser.io/assets/sprites/slime.png');
+        this.load.image('bossImg', 'https://labs.phaser.io/assets/sprites/slime.png');
+        this.load.image('door', 'https://labs.phaser.io/assets/sprites/longarrow.png');
         this.load.spritesheet('hero', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
     }
 
     create() {
-        // DÜNYA SINIRLARINI GENİŞLETTİM (Karakter takılmasın diye)
-        this.physics.world.setBounds(0, 0, 5000, 600);
+        this.physics.world.setBounds(0, 0, 4000, 600);
         this.add.image(0, 0, 'sky').setOrigin(0).setScale(4);
 
         let platforms = this.physics.add.staticGroup();
-        for(let i = 0; i < 15; i++) {
+        for(let i = 0; i < 12; i++) {
             platforms.create(i * 400, 560, 'ground').setScale(2).setTint(0x2d3436).refreshBody();
         }
-        platforms.create(600, 400, 'ground').setTint(0xe17055);
-        platforms.create(1200, 300, 'ground').setTint(0xe17055);
 
         this.player = this.physics.add.sprite(100, 450, 'hero');
-        this.player.setCollideWorldBounds(true).setTint(0x0984e3); // Mavi Şövalye
-        
-        // Kamera Ayarı
-        this.cameras.main.setBounds(0, 0, 5000, 600);
+        this.player.setCollideWorldBounds(true).setTint(0x3498db);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+        this.cameras.main.setBounds(0, 0, 4000, 600);
 
-        // Kılıç Efekti (Görsel Saldırı)
-        this.sword = this.add.rectangle(0, 0, 70, 10, 0xffffff, 0.9).setVisible(false);
+        // BOSS (Haritanın sonunda bekliyor)
+        this.boss = this.physics.add.sprite(2500, 450, 'bossImg');
+        this.boss.setScale(2 + (this.level * 0.5)).setTint(0xc0392b);
+        this.boss.setCollideWorldBounds(true);
 
-        this.apples = this.physics.add.group({ key: 'apple', repeat: 20, setXY: { x: 400, y: 0, stepX: 200 } });
-        this.enemies = this.physics.add.group();
+        // ÇIKIŞ KAPISI (Başta gizli)
+        this.exitDoor = this.physics.add.sprite(3500, 480, 'door').setVisible(false).setTint(0x2ecc71);
         
-        // BOSS
-        let boss = this.enemies.create(800 + (this.level * 300), 500, 'boss');
-        boss.setScale(1.5 + (this.level * 0.4)).setTint(0xd63031);
-        boss.hp = 3 + this.level;
+        this.sword = this.add.rectangle(0, 0, 80, 20, 0xffffff, 0.7).setVisible(false);
+        this.apples = this.physics.add.group({ key: 'apple', repeat: 15, setXY: { x: 500, y: 0, stepX: 200 } });
 
         this.physics.add.collider(this.player, platforms);
-        this.physics.add.collider(this.enemies, platforms);
+        this.physics.add.collider(this.boss, platforms);
         this.physics.add.collider(this.apples, platforms);
-        this.physics.add.overlap(this.player, this.apples, (p, a) => { a.destroy(); this.score += 10; }, null, this);
-        this.physics.add.overlap(this.player, this.enemies, this.handleCombat, null, this);
+        this.physics.add.collider(this.exitDoor, platforms);
+
+        this.physics.add.overlap(this.player, this.apples, (p, a) => a.destroy());
+        this.physics.add.overlap(this.player, this.boss, this.takeDamage, null, this);
+        this.physics.add.overlap(this.player, this.exitDoor, this.winLevel, null, this);
+
+        // CAN BARI ÇİZİMİ
+        this.hpBox = this.add.graphics().setScrollFactor(0);
+        this.bossHpBox = this.add.graphics().setScrollFactor(0);
 
         this.cursors = this.input.keyboard.createCursorKeys();
         this.space = this.input.keyboard.addKey('SPACE');
-        this.shift = this.input.keyboard.addKey('SHIFT');
-
-        this.ui = this.add.text(20, 20, '', { fontSize: '24px', fill: '#fff' }).setScrollFactor(0);
     }
 
     update() {
-        let speed = this.shift.isDown ? 600 : 300; // Dead Cells Dash
+        this.drawUI();
+        let speed = this.input.keyboard.addKey('SHIFT').isDown ? 600 : 300;
+        
         if (this.cursors.left.isDown) { this.player.setVelocityX(-speed); this.player.flipX = true; }
         else if (this.cursors.right.isDown) { this.player.setVelocityX(speed); this.player.flipX = false; }
         else { this.player.setVelocityX(0); }
         if (this.cursors.up.isDown && this.player.body.touching.down) { this.player.setVelocityY(-650); }
 
         if (Phaser.Input.Keyboard.JustDown(this.space)) { this.attack(); }
-        this.ui.setText('Altın: ' + this.score + ' | Seviye: ' + this.level);
+    }
+
+    drawUI() {
+        this.hpBox.clear();
+        this.hpBox.fillStyle(0x000000, 0.5);
+        this.hpBox.fillRect(20, 20, 200, 20);
+        this.hpBox.fillStyle(0xff0000, 1);
+        this.hpBox.fillRect(20, 20, this.playerHP * 2, 20);
+
+        if(this.boss.active) {
+            this.bossHpBox.clear();
+            this.bossHpBox.fillStyle(0x000000, 0.5);
+            this.bossHpBox.fillRect(580, 20, 200, 20);
+            this.bossHpBox.fillStyle(0xf1c40f, 1);
+            let bossBarWidth = (this.bossHP / this.maxBossHP) * 200;
+            this.bossHpBox.fillRect(580, 20, bossBarWidth, 20);
+        }
     }
 
     attack() {
         this.isAttacking = true;
-        this.sword.setPosition(this.player.x + (this.player.flipX ? -45 : 45), this.player.y);
-        this.sword.setVisible(true);
-        this.player.setTint(0xf1c40f);
-
-        this.enemies.children.iterate((enemy) => {
-            if (enemy && Phaser.Geom.Intersects.RectangleToRectangle(this.sword.getBounds(), enemy.getBounds())) {
-                enemy.hp--;
-                enemy.setTint(0xffffff);
-                this.time.delayedCall(100, () => enemy.setTint(0xd63031));
-                if(enemy.hp <= 0) { enemy.destroy(); alert("Bölüm Sonu Boss'u Yenildi!"); this.scene.start('MainMenu'); }
+        this.sword.setPosition(this.player.x + (this.player.flipX ? -50 : 50), this.player.y).setVisible(true);
+        
+        if (this.boss.active && Phaser.Geom.Intersects.RectangleToRectangle(this.sword.getBounds(), this.boss.getBounds())) {
+            this.bossHP -= 10;
+            this.boss.setTint(0xffffff);
+            this.time.delayedCall(100, () => this.boss.setTint(0xc0392b));
+            if (this.bossHP <= 0) {
+                this.boss.destroy();
+                this.bossHpBox.clear();
+                this.exitDoor.setVisible(true); // Boss ölünce kapı açılır
+                alert("Boss Öldü! Haritanın sonundaki yeşil kapıya git!");
             }
-        });
-
-        this.time.delayedCall(200, () => { this.sword.setVisible(false); this.isAttacking = false; this.player.setTint(0x0984e3); });
+        }
+        this.time.delayedCall(150, () => { this.sword.setVisible(false); this.isAttacking = false; });
     }
 
-    handleCombat(player, enemy) {
+    takeDamage() {
         if (this.isAttacking) return;
-        alert("Öldün! Toplanan Altın: " + this.score);
+        this.playerHP -= 1;
+        this.player.setTint(0xff0000);
+        this.time.delayedCall(100, () => this.player.setTint(0x3498db));
+        if (this.playerHP <= 0) { alert("Öldün!"); this.scene.start('MainMenu'); }
+    }
+
+    winLevel() {
+        if (!this.exitDoor.visible) return;
+        alert("Seviye Tamamlandı! Menüye dönülüyor...");
         this.scene.start('MainMenu');
     }
 }

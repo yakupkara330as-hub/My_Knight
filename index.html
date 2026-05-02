@@ -3,176 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Apple Cells: Final Master Build | Yakup Kara</title>
+    <title>Apple Cells: Redemption | Yakup Kara</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background: #87CEEB; overflow: hidden; touch-action: none; }
-        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; font-family: 'Courier New', Courier, monospace; }
-        .hud { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); color: #0f0; padding: 15px; border: 2px solid #0f0; pointer-events: auto; }
+        #ui-layer { position: absolute; top: 10px; left: 10px; color: #fff; font-family: monospace; z-index: 100; background: rgba(0,0,0,0.5); padding: 10px; }
     </style>
 </head>
 <body>
-    <div id="ui-container">
-        <div class="hud">
-            SİSTEM: AKTİF [YAKUP MASTER v2026] <br>
-            MESAFE: <span id="dist">0</span>m <br>
-            DURUM: BOSS ARANIYOR...
-        </div>
-    </div>
+    <div id="ui-layer">YAKUP OS: AKTİF | CAN: <span id="hp">100</span> | BOSS CANI: <span id="bhp">500</span></div>
 
 <script>
-/**
- * APPLE CELLS - ULTIMATE MONOLITH BUILD
- * DEVELOPER: Yakup Kara
- * CURRICULUM: 6th Grade Mastery
- * HARDWARE LEVEL: Apple M-Series Ready
- */
-
-class AppleCellsFinal extends Phaser.Scene {
+class AppleCellsRedemption extends Phaser.Scene {
     constructor() {
-        super('AppleCellsFinal');
-        this.playerSpeed = 700;
-        this.jumpForce = -1500;
-        this.isGameOver = false;
+        super('AppleCellsRedemption');
+        this.playerHP = 100;
+        this.bossHP = 500;
     }
 
     preload() {
-        // AYDINLIK TEMA ASSETLERİ
         this.load.image('sky', 'https://labs.phaser.io/assets/skies/gradient24.png');
         this.load.image('platform', 'https://labs.phaser.io/assets/sprites/platform.png');
-        this.load.image('star', 'https://labs.phaser.io/assets/sprites/star.png');
-        this.load.image('bomb', 'https://labs.phaser.io/assets/sprites/bomb.png');
-        this.load.image('boss_obj', 'https://labs.phaser.io/assets/sprites/aqua_ball.png');
+        this.load.image('boss', 'https://labs.phaser.io/assets/sprites/aqua_ball.png');
         this.load.spritesheet('hero', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
     }
 
     create() {
-        // GENİŞ DÜNYA (30.000 METRE)
-        this.physics.world.setBounds(0, 0, 30000, 2000);
-        this.add.tileSprite(0, 0, 30000, 2000, 'sky').setOrigin(0);
+        this.physics.world.setBounds(0, 0, 15000, 2000);
+        this.add.tileSprite(0, 0, 15000, 2000, 'sky').setOrigin(0);
 
-        // ZEMİN VE SEVİYE TASARIMI (ASLA SİLİNMEZ)
+        // PLATFORMLAR (Düzeltilmiş Yükseklik)
         this.platforms = this.physics.add.staticGroup();
-        
-        // Ana Yer Tabakası
-        for (let i = 0; i < 30000; i += 400) {
-            let ground = this.platforms.create(i, 1950, 'platform').setScale(2).refreshBody();
-            ground.setTint(0x333333);
+        for (let i = 0; i < 15000; i += 400) {
+            this.platforms.create(i, 1950, 'platform').setScale(2).refreshBody().setTint(0x444444);
         }
+        // Atlanabilir platformlar (Zıplama gücüne göre ayarlandı)
+        this.platforms.create(800, 1750, 'platform').refreshBody();
+        this.platforms.create(1300, 1600, 'platform').refreshBody();
+        this.platforms.create(1800, 1450, 'platform').refreshBody();
 
-        // PLATFORMLAR (MANUEL - KODU UZATAN BÖLÜM)
-        const pLocs = [
-            [800, 1700], [1200, 1500], [1600, 1300], [2000, 1500], [2500, 1700],
-            [3000, 1400], [3500, 1200], [4000, 1500], [4500, 1700], [5000, 1300],
-            [5500, 1100], [6000, 1400], [6500, 1600], [7000, 1300], [7500, 1500]
-            // Buraya 1500 satıra kadar manuel platform eklenebilir.
-        ];
-        pLocs.forEach(p => this.platforms.create(p[0], p[1], 'platform').refreshBody());
-
-        // ANA KARAKTER: YAKUP
-        this.player = this.physics.add.sprite(300, 1800, 'hero').setScale(2.5).setDepth(10);
+        // OYUNCU (Yakup)
+        this.player = this.physics.add.sprite(200, 1800, 'hero').setScale(2.5).setDepth(5);
         this.player.setCollideWorldBounds(true);
         this.player.body.setGravityY(3500);
 
-        // KAMERA (KESİNTİSİZ)
-        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-        this.cameras.main.setBounds(0, 0, 30000, 2000);
-
-        // ANIMASYONLAR
-        this.createPlayerAnims();
-
-        // KONTROLLER (WASD + MOBİL)
-        this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE');
-        this.createMobileControls();
-
-        // BOSS SİSTEMİ (SEVİYE SONU)
-        this.boss = this.physics.add.sprite(29000, 1700, 'boss_obj').setScale(15).setTint(0xff0000);
+        // BOSS (Gerçek ve Orada)
+        this.boss = this.physics.add.sprite(14500, 1800, 'boss').setScale(10).setTint(0xff0000);
         this.boss.setImmovable(true);
 
-        // ÇARPIŞMALAR
+        // KONTROLLER
+        this.keys = this.input.keyboard.addKeys({
+            W: 'W', A: 'A', S: 'S', D: 'D', SPACE: 'SPACE'
+        });
+
+        // MOBİL BUTONLAR (KAYBOLMAZ)
+        this.createMobileUI();
+
+        // KAMERA
+        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+        this.cameras.main.setBounds(0, 0, 15000, 2000);
+
+        // FİZİK
         this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.overlap(this.player, this.boss, this.triggerBossFight, null, this);
-
-        // HUD ELEMENTİ
-        this.distText = document.getElementById('dist');
+        this.physics.add.overlap(this.player, this.boss, this.fightBoss, null, this);
     }
 
-    createPlayerAnims() {
-        this.anims.create({ key: 'left', frames: this.anims.generateFrameNumbers('hero', { start: 0, end: 3 }), frameRate: 15, repeat: -1 });
-        this.anims.create({ key: 'turn', frames: [ { key: 'hero', frame: 4 } ], frameRate: 20 });
-        this.anims.create({ key: 'right', frames: this.anims.generateFrameNumbers('hero', { start: 5, end: 8 }), frameRate: 15, repeat: -1 });
-    }
-
-    // MOBİL DÜĞMELER (DEVASA VE SABİT)
-    createMobileControls() {
+    createMobileUI() {
         const sw = window.innerWidth;
         const sh = window.innerHeight;
-        const btnStyle = { fontSize: '80px', backgroundColor: '#000000aa', padding: 25, borderRadius: '15px' };
+        const s = { fontSize: '70px', backgroundColor: '#000', padding: 20 };
 
-        // Sol Kontroller
-        this.btnL = this.add.text(80, sh - 200, '◀', btnStyle).setInteractive().setScrollFactor(0).setDepth(100);
-        this.btnR = this.add.text(320, sh - 200, '▶', btnStyle).setInteractive().setScrollFactor(0).setDepth(100);
+        this.btnL = this.add.text(50, sh - 150, '◀', s).setInteractive().setScrollFactor(0).setDepth(200);
+        this.btnR = this.add.text(250, sh - 150, '▶', s).setInteractive().setScrollFactor(0).setDepth(200);
+        this.btnJ = this.add.text(sw - 400, sh - 150, '▲', s).setInteractive().setScrollFactor(0).setDepth(200); // Zıplama
+        this.btnA = this.add.text(sw - 200, sh - 150, '⚔', { ...s, backgroundColor: '#f00' }).setInteractive().setScrollFactor(0).setDepth(200); // Vurma
 
-        // Sağ Kontroller (Zıplama ve Vurma)
-        this.btnJ = this.add.text(sw - 250, sh - 200, '▲', btnStyle).setInteractive().setScrollFactor(0).setDepth(100);
-        this.btnA = this.add.text(sw - 250, sh - 450, '⚔', { ...btnStyle, backgroundColor: '#ff0000aa' }).setInteractive().setScrollFactor(0).setDepth(100);
-
-        this.mMove = { L: false, R: false, J: false, A: false };
-
-        this.btnL.on('pointerdown', () => this.mMove.L = true);
-        this.btnL.on('pointerup', () => this.mMove.L = false);
-        this.btnR.on('pointerdown', () => this.mMove.R = true);
-        this.btnR.on('pointerup', () => this.mMove.R = false);
-        this.btnJ.on('pointerdown', () => this.mMove.J = true);
-        this.btnJ.on('pointerup', () => this.mMove.J = false);
-        this.btnA.on('pointerdown', () => this.executeAttack());
+        this.touch = { L: false, R: false, J: false };
+        this.btnL.on('pointerdown', () => this.touch.L = true);
+        this.btnL.on('pointerup', () => this.touch.L = false);
+        this.btnR.on('pointerdown', () => this.touch.R = true);
+        this.btnR.on('pointerup', () => this.touch.R = false);
+        this.btnJ.on('pointerdown', () => this.touch.J = true);
+        this.btnJ.on('pointerup', () => this.touch.J = false);
+        this.btnA.on('pointerdown', () => this.attackAction());
     }
 
-    executeAttack() {
-        this.player.setTint(0xffffff);
+    attackAction() {
+        this.player.setTint(0xffff00);
         this.time.delayedCall(100, () => this.player.clearTint());
-        // Boss'a vurma mantığı buraya eklenir
+        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.boss.x, this.boss.y) < 500) {
+            this.bossHP -= 10;
+            document.getElementById('bhp').innerText = this.bossHP;
+        }
     }
 
     update() {
-        if (this.isGameOver) return;
+        if (this.keys.A.isDown || this.touch.L) this.player.setVelocityX(-700);
+        else if (this.keys.D.isDown || this.touch.R) this.player.setVelocityX(700);
+        else this.player.setVelocityX(0);
 
-        // YÜRÜME (WASD + MOBİL)
-        if (this.keys.A.isDown || this.mMove.L) {
-            this.player.setVelocityX(-this.playerSpeed);
-            this.player.anims.play('left', true);
-        } else if (this.keys.D.isDown || this.mMove.R) {
-            this.player.setVelocityX(this.playerSpeed);
-            this.player.anims.play('right', true);
-        } else {
-            this.player.setVelocityX(0);
-            this.player.anims.play('turn');
+        if ((this.keys.W.isDown || this.touch.J) && this.player.body.touching.down) {
+            this.player.setVelocityY(-1650); // Artırılmış zıplama gücü
         }
 
-        // ZIPLAMA
-        if ((this.keys.W.isDown || this.keys.SPACE.isDown || this.mMove.J) && this.player.body.touching.down) {
-            this.player.setVelocityY(this.jumpForce);
+        // SPACE = VURMA SİSTEMİ
+        if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) {
+            this.attackAction();
         }
-
-        // HUD GÜNCELLEME
-        this.distText.innerText = Math.floor(this.player.x);
-    }
-
-    triggerBossFight() {
-        this.cameras.main.shake(500, 0.05);
-        this.boss.setTint(0x00ff00);
     }
 }
 
-// CONFIG (DİNAMİK ÇÖZÜNÜRLÜK)
 const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
     height: window.innerHeight,
-    physics: { default: 'arcade', arcade: { gravity: { y: 3500 }, debug: false } },
-    scene: [AppleCellsFinal]
+    physics: { default: 'arcade', arcade: { gravity: { y: 3500 } } },
+    scene: [AppleCellsRedemption]
 };
-const game = new Phaser.Game(config);
+new Phaser.Game(config);
 </script>
 </body>
 </html>

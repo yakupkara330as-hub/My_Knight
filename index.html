@@ -2,170 +2,507 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Apple Cells: Master Build | Yakup Kara</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yakup'un Matematik Monopolisi</title>
     <style>
-        body { margin: 0; background: #0b0d10; overflow: hidden; touch-action: none; font-family: 'Segoe UI', sans-serif; }
-        canvas { image-rendering: pixelated; }
-        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; z-index: 100; color: #fff; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e24;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #4caf50;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #top-bar {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 20px;
+            background: #2a2a35;
+            padding: 15px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 1.2rem;
+        }
+
+        #timer {
+            font-weight: bold;
+            color: #ff5252;
+        }
+
+        #game-container {
+            display: flex;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Oyun Tahtası Tasarımı */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(5, 120px);
+            grid-template-rows: repeat(5, 120px);
+            gap: 10px;
+            background: #141419;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            background: #3a3a4a;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+            position: relative;
+            box-sizing: border-box;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .start { background-color: #2e7d32; border-color: #4caf50; color: #fff; }
+        .question { background-color: #0288d1; }
+        .reward { background-color: #ffb300; color: #000; }
+        .penalty { background-color: #d32f2f; }
+        
+        .property { background-color: #eceff1; color: #000; }
+        .p1-owner { border: 4px solid #e91e63 !important; }
+        .p2-owner { border: 4px solid #9c27b0 !important; }
+        .p3-owner { border: 4px solid #00ecc6 !important; }
+
+        .piyon-container {
+            display: flex;
+            gap: 4px;
+            position: absolute;
+            bottom: 5px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .piyon {
+            font-size: 1.3rem;
+            animation: bounce 0.3s infinite alternate;
+        }
+
+        /* Panel Ayarları */
+        #panel {
+            flex: 1;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .player-card {
+            background: #2a2a35;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-left: 8px solid #ccc;
+        }
+        .player-card.active {
+            transform: scale(1.03);
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+        #p1-card { border-left-color: #e91e63; }
+        #p2-card { border-left-color: #9c27b0; }
+        #p3-card { border-left-color: #00ecc6; }
+
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #555; cursor: not-allowed; }
+
+        /* Pop-up Kart Ekranı */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #2a2a35;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 3px solid #4caf50;
+        }
+        .modal-content h2 { margin-top: 0; }
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .opt-btn {
+            background: #3a3a4a;
+            color: white;
+            text-align: left;
+            padding: 10px 15px;
+            font-size: 1rem;
+        }
+        .opt-btn:hover { background: #4a4a5a; }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-5px); }
+        }
     </style>
 </head>
 <body>
-    <div id="ui-layer">
-        <div style="background: rgba(0,0,0,0.8); padding: 12px; border-radius: 8px; border: 2px solid #2ecc71;">
-            LVL: <span id="lvl">1</span> | BOSS HP: <span id="bhp">100</span>
+
+    <h1>Yakup'un Matematik Monopolisi 🎲</h1>
+    
+    <div id="top-bar">
+        <div>Sıradaki Oyuncu: <span id="current-turn-text" style="font-weight:bold; color:#4caf50;">Ceday</span></div>
+        <div>Kalan Süre: <span id="timer">10:00</span></div>
+    </div>
+
+    <div id="game-container">
+        <div id="board">
+            <div class="cell start" id="cell-0">BAŞLANGIÇ<div class="piyon-container" id="p-0"></div></div>
+            <div class="cell reward" id="cell-1">ÖDÜL KARTI<div class="piyon-container" id="p-1"></div></div>
+            <div class="cell property" id="cell-2">ARSA 1<br><span style="font-size:0.7rem;">Fiyat: 60<br>Kira: 30</span><div class="piyon-container" id="p-2"></div></div>
+            <div class="cell question" id="cell-3">SORU (Toplama)<div class="piyon-container" id="p-3"></div></div>
+            <div class="cell penalty" id="cell-4">CEZA KARTI<div class="piyon-container" id="p-4"></div></div>
+
+            <div class="cell question" id="cell-15">SORU (Cebirsel)<div class="piyon-container" id="p-15"></div></div>
+            <div style="grid-column: span 3; grid-row: span 3; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+                <button id="dice-btn" onclick="playTurn()">Zar At 🎲</button>
+                <p id="dice-result" style="font-size:1.2rem; margin-top:15px; font-weight:bold; color:#ffb300;"></p>
+            </div>
+            <div class="cell property" id="cell-5">ARSA 2<br><span style="font-size:0.7rem;">Fiyat: 80<br>Kira: 40</span><div class="piyon-container" id="p-5"></div></div>
+
+            <div class="cell property" id="cell-14">ARSA 4<br><span style="font-size:0.7rem;">Fiyat: 120<br>Kira: 60</span><div class="piyon-container" id="p-14"></div></div>
+            <div class="cell question" id="cell-6">SORU (Çarpma)<div class="piyon-container" id="p-6"></div></div>
+
+            <div class="cell reward" id="cell-13">ÖDÜL KARTI<div class="piyon-container" id="p-13"></div></div>
+            <div class="cell penalty" id="cell-7">CEZA KARTI<div class="piyon-container" id="p-7"></div></div>
+
+            <div class="cell penalty" id="cell-12">CEZA KARTI<div class="piyon-container" id="p-12"></div></div>
+            <div class="cell question" id="cell-11">SORU (Çarpma)<div class="piyon-container" id="p-11"></div></div>
+            <div class="cell property" id="cell-10">ARSA 3<br><span style="font-size:0.7rem;">Fiyat: 100<br>Kira: 50</span><div class="piyon-container" id="p-10"></div></div>
+            <div class="cell question" id="cell-9">SORU (Cebirsel)<div class="piyon-container" id="p-9"></div></div>
+            <div class="cell reward" id="cell-8">ÖDÜL KARTI<div class="piyon-container" id="p-8"></div></div>
+        </div>
+
+        <div id="panel">
+            <div class="player-card active" id="p1-card">
+                <h3>Ceday ⚔️</h3>
+                <p>Puan: <span id="p1-score">600</span></p>
+                <p>Mülkler: <span id="p1-assets">-</span></p>
+            </div>
+            <div class="player-card" id="p2-card">
+                <h3>Bebiyoda 💚</h3>
+                <p>Puan: <span id="p2-score">600</span></p>
+                <p>Mülkler: <span id="p2-assets">-</span></p>
+            </div>
+            <div class="player-card" id="p3-card">
+                <h3>Kaplumbağa 🐢</h3>
+                <p>Puan: <span id="p3-score">600</span></p>
+                <p>Mülkler: <span id="p3-assets">-</span></p>
+            </div>
         </div>
     </div>
 
-<script>
-/**
- * APPLE CELLS: MASTER BUILD - YAKUP KARA
- * PC KONTROLLER: WASD (Hareket), SPACE (Saldırı), SHIFT (Hız)
- * MOBİL KONTROLLER: Sabit ve Büyük Butonlar
- */
+    <div id="modal">
+        <div class="modal-content" id="modal-body">
+            </div>
+    </div>
 
-class BootScene extends Phaser.Scene {
-    constructor() { super('BootScene'); }
-    preload() {
-        this.load.image('sky', 'https://labs.phaser.io/assets/skies/sky4.png');
-        this.load.image('dirt', 'https://labs.phaser.io/assets/sprites/platform.png');
-        this.load.image('boss', 'https://labs.phaser.io/assets/sprites/slime.png');
-        this.load.spritesheet('hero', 'https://labs.phaser.io/assets/sprites/dude.png', { frameWidth: 32, frameHeight: 48 });
-    }
-    create() { this.scene.start('MenuScene'); }
-}
+    <script>
+        // Oyun Verileri
+        let players = [
+            { id: 0, name: "Ceday", icon: "⚔️", score: 600, pos: 0, assets: [], color: "#e91e63" },
+            { id: 1, name: "Bebiyoda", icon: "💚", score: 600, pos: 0, assets: [], color: "#9c27b0" },
+            { id: 2, name: "Kaplumbağa", icon: "🐢", score: 600, pos: 0, assets: [], color: "#00ecc6" }
+        ];
+        let turn = 0;
+        let totalTime = 600; // 10 Dakika (Saniye bazında)
 
-class MenuScene extends Phaser.Scene {
-    constructor() { super('MenuScene'); }
-    create() {
-        this.add.image(400, 225, 'sky').setScale(2).setTint(0x111111);
-        this.add.text(400, 40, 'APPLE CELLS: 30 LEVELS', { fontSize: '36px', fill: '#f1c40f', fontStyle: 'bold' }).setOrigin(0.5);
+        // Arsa Veritabanı
+        const properties = {
+            2: { name: "Arsa 1", price: 60, rent: 30, owner: null },
+            5: { name: "Arsa 2", price: 80, rent: 40, owner: null },
+            10: { name: "Arsa 3", price: 100, rent: 50, owner: null },
+            14: { name: "Arsa 4", price: 120, rent: 60, owner: null }
+        };
 
-        const grid = this.add.container(60, 80);
-        for(let i = 1; i <= 30; i++) {
-            let col = (i-1) % 10;
-            let row = Math.floor((i-1) / 10);
-            let btn = this.add.rectangle(col*72, row*75, 60, 60, 0x2c3e50).setInteractive().setStrokeStyle(2, 0xffffff);
-            let txt = this.add.text(col*72, row*75, i, { fontSize: '22px' }).setOrigin(0.5);
-            btn.on('pointerdown', () => this.scene.start('GameScene', { level: i }));
-            grid.add([btn, txt]);
+        // Kolay Soru Havuzu
+        const questions = {
+            toplama: [
+                { q: "45 + 32 kaçtır?", a: "77", choices: ["72", "77", "87", "79"] },
+                { q: "120 + 85 kaçtır?", a: "205", choices: ["200", "215", "205", "195"] },
+                { q: "250 + 150 kaçtır?", a: "400", choices: ["350", "400", "450", "500"] },
+                { q: "99 + 41 kaçtır?", a: "140", choices: ["130", "140", "150", "139"] },
+                { q: "360 + 240 kaçtır?", a: "600", choices: ["500", "550", "600", "650"] }
+            ],
+            carpma: [
+                { q: "15 x 4 kaçtır?", a: "60", choices: ["45", "50", "60", "65"] },
+                { q: "12 x 5 kaçtır?", a: "60", choices: ["50", "55", "60", "70"] },
+                { q: "20 x 11 kaçtır?", a: "220", choices: ["200", "210", "220", "240"] },
+                { q: "9 x 8 kaçtır?", a: "72", choices: ["64", "72", "81", "76"] },
+                { q: "25 x 3 kaçtır?", a: "75", choices: ["65", "70", "75", "80"] }
+            ],
+            cebirsel: [
+                { q: "2x + 4 ifadesinde x = 5 için sonuç nedir?", a: "14", choices: ["10", "12", "14", "16"] },
+                { q: "3a - 2 ifadesinde a = 4 için sonuç nedir?", a: "10", choices: ["8", "10", "12", "14"] },
+                { q: "5y ifadesinde y = 6 için sonuç nedir?", a: "30", choices: ["25", "30", "35", "40"] },
+                { q: "'Bir sayının 3 katının 5 fazlası' ifadesi hangisidir?", a: "3x + 5", choices: ["3x - 5", "3x + 5", "5x + 3", "x/3 + 5"] },
+                { q: "x + 12 ifadesinde x = 8 için sonuç nedir?", a: "20", choices: ["16", "18", "20", "22"] }
+            ]
+        };
+
+        // Ödül ve Ceza Kartları Havuzu (Max 100 Puan)
+        const rewards = [
+            { text: "Matematik yazılısından 100 aldın!", p: 100 },
+            { text: "Bilişim dersinde hocaya yardım ettin!", p: 75 },
+            { text: "Okulun resmi web sitesini tasarladın!", p: 50 },
+            { text: "İstiklal Marşı'nı kürsüde çok güzel okudun!", p: 40 },
+            { text: "Sınıf panosunu harika düzenledin!", p: 30 },
+            { text: "Bahçedeki çöpleri topladın, örnek öğrenci seçildin!", p: 25 },
+            { text: "Arkadaşına anlamadığı matematik sorusunu çözdün!", p: 20 },
+            { text: "Derse tam vaktinde, zille birlikte girdin!", p: 10 }
+        ];
+
+        const penalties = [
+            { text: "Bahçede top oynarken okulun camını kırdın!", p: 100 },
+            { text: "Derse konuşup öğretmenden azar işittin!", p: 75 },
+            { text: "Matematik ödevini evde unuttun!", p: 50 },
+            { text: "Koridorda çok hızlı koşup nöbetçi hocaya yakalandın!", p: 40 },
+            { text: "Sabah ilk derse geç kaldın!", p: 30 },
+            { text: "Sınıfta sıranın altına çöp attın!", p: 25 },
+            { text: "Arkadaşının kalemini izinsiz aldın!", p: 20 },
+            { text: "Sınıftaki sıranın üzerine yazı yazdın!", p: 10 }
+        ];
+
+        // Geri Sayım Sayacı Başlatma
+        const countdown = setInterval(() => {
+            if (totalTime <= 0) {
+                clearInterval(countdown);
+                endGame();
+                return;
+            }
+            totalTime--;
+            let mins = Math.floor(totalTime / 60);
+            let secs = totalTime % 60;
+            document.getElementById("timer").innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }, 1000);
+
+        // Piyonları İlk Konuma Çizme
+        function drawPiyonlar() {
+            for(let i=0; i<16; i++) {
+                document.getElementById(`p-${i}`).innerHTML = "";
+            }
+            players.forEach(p => {
+                let pElem = document.createElement("span");
+                pElem.className = "piyon";
+                pElem.innerText = p.icon;
+                pElem.title = p.name;
+                document.getElementById(`p-${p.pos}`).appendChild(pElem);
+            });
         }
-    }
-}
+        drawPiyonlar();
 
-class GameScene extends Phaser.Scene {
-    constructor() { super('GameScene'); }
-    init(data) {
-        this.level = data.level || 1;
-        this.playerHP = 100;
-        this.bossHP = 100 + (this.level * 100);
-        this.maxBossHP = this.bossHP;
-        this.isAttacking = false;
-        this.isDead = false;
-    }
+        // Sıra Döndürme Fonksiyonu
+        function playTurn() {
+            let p = players[turn];
+            let dice = Math.floor(Math.random() * 6) + 1; // 1-6 arası zar
+            document.getElementById("dice-result").innerText = `${p.name} zarı fırlattı: ${dice} 🎲`;
+            
+            let oldPos = p.pos;
+            p.pos = (p.pos + dice) % 16;
 
-    create() {
-        this.physics.world.setBounds(0, 0, 8000, 600);
-        this.add.tileSprite(0, 0, 8000, 600, 'sky').setOrigin(0).setTint(0x333333).setScale(2);
+            // Başlangıçtan geçiş kontrolü (Bonus 50 Puan)
+            if (p.pos < oldPos) {
+                p.score += 50;
+                alert(`${p.name} Başlangıç noktasından geçti, +50 Puan kazandı!`);
+            }
 
-        this.platforms = this.physics.add.staticGroup();
-        for(let i = 0; i < 65; i++) {
-            this.platforms.create(i * 128, 580, 'dirt').setTint(0x5d4037).refreshBody();
-            if(i > 5 && Math.random() < 0.25) {
-                this.platforms.create(i*128, Phaser.Math.Between(250, 400), 'dirt').setScale(0.5).setTint(0x2ecc71).refreshBody();
+            drawPiyonlar();
+            document.getElementById("dice-btn").disabled = true;
+
+            setTimeout(() => {
+                evaluateCell(p, p.pos);
+            }, 600);
+        }
+
+        // Basılan Kareyi Değerlendirme
+        function evaluateCell(player, cellId) {
+            let cell = document.getElementById(`cell-${cellId}`);
+            
+            // 1. ARSA KARELERİ
+            if (properties[cellId]) {
+                let arsa = properties[cellId];
+                if (arsa.owner === null) {
+                    // Satın alma penceresi
+                    if (player.score >= arsa.price) {
+                        if (confirm(`${player.name}, ${arsa.name} üzerindesin. Fiyatı ${arsa.price} puan. Satın almak istiyor musun? (Soru çözmen gerekmiyor!)`)) {
+                            player.score -= arsa.price;
+                            arsa.owner = player.id;
+                            player.assets.push(arsa.name);
+                            cell.classList.add(`p${player.id+1}-owner`);
+                            updateUI();
+                        }
+                    } else {
+                        alert(`Burayı satın almak için yeterli puanın yok (${arsa.price} puan lazım).`);
+                    }
+                    nextTurn();
+                } else if (arsa.owner === player.id) {
+                    alert("Kendi mülkündesin, dinlenebilirsin.");
+                    nextTurn();
+                } else {
+                    // Kira ödeme (Arsa bedelinin yarısı yani kira fiyatı kadar)
+                    let owner = players[arsa.owner];
+                    player.score -= arsa.rent;
+                    owner.score += arsa.rent;
+                    alert(`${player.name}, ${owner.name} adlı oyuncunun arsasına bastın! ${arsa.rent} puan kira ödedin.`);
+                    updateUI();
+                    nextTurn();
+                }
+            }
+            // 2. ÖDÜL KARELERİ
+            else if (cell.classList.contains("reward")) {
+                let card = rewards[Math.floor(Math.random() * rewards.length)];
+                showModal(`🎁 ÖDÜL KARTI`, `<p style='font-size:1.2rem;'>${card.text}</p><p style='color:#4caf50; font-size:1.5rem;'>+${card.p} Puan</p>`, () => {
+                    player.score += card.p;
+                    updateUI();
+                    nextTurn();
+                });
+            }
+            // 3. CEZA KARELERİ
+            else if (cell.classList.contains("penalty")) {
+                let card = penalties[Math.floor(Math.random() * penalties.length)];
+                showModal(`❌ CEZA KARTI`, `<p style='font-size:1.2rem;'>${card.text}</p><p style='color:#ff5252; font-size:1.5rem;'>-${card.p} Puan</p>`, () => {
+                    player.score -= card.p;
+                    updateUI();
+                    nextTurn();
+                });
+            }
+            // 4. MATEMATİK SORU KARELERİ
+            else if (cell.classList.contains("question")) {
+                let type = "toplama";
+                let points = 25;
+                if(cellId === 6 || cellId === 11) { type = "carpma"; points = 50; }
+                if(cellId === 9 || cellId === 15) { type = "cebirsel"; points = 75; }
+
+                let qList = questions[type];
+                let qObj = qList[Math.floor(Math.random() * qList.length)];
+
+                let html = `<h2>📐 Soru Kategorisi: ${type.toUpperCase()} (+${points} / -${points} Puan)</h2>`;
+                html += `<p style='font-size:1.4rem; margin:20px 0;'>${qObj.q}</p>`;
+                html += `<div class='options-container'>`;
+                qObj.choices.forEach(choice => {
+                    html += `<button class='opt-btn' onclick="checkAnswer('${choice}', '${qObj.a}', ${points})">${choice}</button>`;
+                });
+                html += `</div>`;
+                
+                document.getElementById("modal-body").innerHTML = html;
+                document.getElementById("modal").style.display = "flex";
+            }
+            else {
+                // Başlangıç karesi boş geçilir
+                nextTurn();
             }
         }
 
-        this.player = this.physics.add.sprite(200, 400, 'hero').setScale(1.6).setTint(0x3498db);
-        this.player.setCollideWorldBounds(true).body.setGravityY(1600);
-        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-
-        let spawnX = 1500 + (this.level * 150);
-        this.boss = this.physics.add.sprite(spawnX, 400, 'boss').setTint(0xe74c3c).setScale(2 + (this.level * 0.15));
-        this.boss.setCollideWorldBounds(true).setBounce(0.3);
-
-        this.cursors = this.input.keyboard.createCursorKeys();
-        this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT');
-        this.createMobileButtons();
-
-        this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.collider(this.boss, this.platforms);
-        this.physics.add.overlap(this.player, this.boss, () => this.handleDamage());
-
-        this.anims.create({ key: 'walk', frames: this.anims.generateFrameNumbers('hero', { start: 5, end: 8 }), frameRate: 12, repeat: -1 });
-        this.anims.create({ key: 'idle', frames: [ { key: 'hero', frame: 4 } ], frameRate: 20 });
-    }
-
-    createMobileButtons() {
-        const { width: w, height: h } = this.scale;
-        const style = { fontSize: '65px', backgroundColor: '#000000aa', padding: 20, borderRadius: '15px' };
-        
-        this.mCtrl = { L: false, R: false, J: false };
-        this.btnL = this.add.text(50, h-160, '◀', style).setScrollFactor(0).setInteractive().setDepth(1000);
-        this.btnR = this.add.text(230, h-160, '▶', style).setScrollFactor(0).setInteractive().setDepth(1000);
-        this.btnJ = this.add.text(w-320, h-160, '▲', style).setScrollFactor(0).setInteractive().setDepth(1000);
-        this.btnA = this.add.text(w-150, h-160, '⚔', { ...style, backgroundColor: '#880000aa' }).setScrollFactor(0).setInteractive().setDepth(1000);
-
-        this.btnL.on('pointerdown', () => this.mCtrl.L = true); this.btnL.on('pointerup', () => this.mCtrl.L = false);
-        this.btnR.on('pointerdown', () => this.mCtrl.R = true); this.btnR.on('pointerup', () => this.mCtrl.R = false);
-        this.btnJ.on('pointerdown', () => this.mCtrl.J = true); this.btnJ.on('pointerup', () => this.mCtrl.J = false);
-        this.btnA.on('pointerdown', () => this.executeAttack());
-    }
-
-    executeAttack() {
-        if(this.isAttacking) return;
-        this.isAttacking = true;
-        this.player.setTint(0xffffff);
-        if(Phaser.Math.Distance.Between(this.player.x, this.player.y, this.boss.x, this.boss.y) < 180) {
-            this.bossHP -= 25;
-            this.boss.setTint(0xffffff);
-            this.time.delayedCall(100, () => this.boss.setTint(0xe74c3c));
-        }
-        this.time.delayedCall(250, () => { this.player.setTint(0x3498db); this.isAttacking = false; });
-    }
-
-    handleDamage() {
-        if(this.isAttacking) return;
-        this.playerHP -= 0.5;
-        this.player.setTint(0xff0000);
-        this.time.delayedCall(100, () => this.player.setTint(0x3498db));
-        if(this.playerHP <= 0) this.scene.start('MenuScene');
-    }
-
-    update(time) {
-        let speed = (this.keys.SHIFT.isDown) ? 550 : 300;
-        if (this.keys.A.isDown || this.cursors.left.isDown || this.mCtrl.L) {
-            this.player.setVelocityX(-speed); this.player.flipX = true; this.player.anims.play('walk', true);
-        } else if (this.keys.D.isDown || this.cursors.right.isDown || this.mCtrl.R) {
-            this.player.setVelocityX(speed); this.player.flipX = false; this.player.anims.play('walk', true);
-        } else {
-            this.player.setVelocityX(0); this.player.anims.play('idle');
-        }
-
-        if ((this.keys.W.isDown || this.cursors.up.isDown || this.mCtrl.J) && this.player.body.touching.down) {
-            this.player.setVelocityY(-850);
-        }
-
-        if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE)) this.executeAttack();
-
-        // Boss AI
-        if(this.boss.active) {
-            let dist = this.player.x - this.boss.x;
-            if(Math.abs(dist) < 1000) {
-                this.boss.setVelocityX(dist > 0 ? 180 + (this.level*5) : -180 - (this.level*5));
-                if(this.boss.body.touching.down && Math.random() < 0.02) this.boss.setVelocityY(-600);
+        // Cevap Kontrol Mekanizması
+        function checkAnswer(chosen, correct, points) {
+            let player = players[turn];
+            document.getElementById("modal").style.display = "none";
+            if (chosen === correct) {
+                player.score += points;
+                alert("TEBRİKLER! Doğru cevap. " + points + " puan kazandın.");
+            } else {
+                player.score -= points;
+                alert("TÜH! Yanlış cevap. Doğru yanıt " + correct + " olmalıydı. " + points + " puan kaybettin.");
             }
+            updateUI();
+            nextTurn();
         }
 
-        document.getElementById('lvl').innerText = this.level;
-        document.getElementById('bhp').innerText = Math.floor(this.bossHP);
-        if(this.bossHP <= 0) { this.boss.destroy(); this.time.delayedCall(1500, () => this.scene.start('MenuScene')); }
-    }
-}
+        // Sırayı Değiştirme
+        function nextTurn() {
+            document.getElementById("p1-card").classList.remove("active");
+            document.getElementById("p2-card").classList.remove("active");
+            document.getElementById("p3-card").classList.remove("active");
 
-const config = { type: Phaser.AUTO, width: 800, height: 450, parent: 'game-container', physics: { default: 'arcade', arcade: { gravity: { y: 1600 } } }, scene: [BootScene, MenuScene, GameScene] };
-new Phaser.Game(config);
-</script>
+            turn = (turn + 1) % 3;
+            document.getElementById("current-turn-text").innerText = players[turn].name;
+            document.getElementById("current-turn-text").style.color = players[turn].color;
+            document.getElementById("p" + (turn+1) + "-card").classList.add("active");
+            document.getElementById("dice-btn").disabled = false;
+        }
+
+        // Ekran Kartı Açma Kapatma Helper'ı
+        function showModal(title, content, onClose) {
+            let html = `<h2>${title}</h2>${content}<br><button onclick="closeModal()">Tamam</button>`;
+            document.getElementById("modal-body").innerHTML = html;
+            document.getElementById("modal").style.display = "flex";
+            window.modalCloseCallback = onClose;
+        }
+
+        function closeModal() {
+            document.getElementById("modal").style.display = "none";
+            if(window.modalCloseCallback) window.modalCloseCallback();
+        }
+
+        // Arayüz Puanlarını Tazeleme
+        function updateUI() {
+            players.forEach(p => {
+                document.getElementById(`p${p.id+1}-score`).innerText = p.score;
+                document.getElementById(`p${p.id+1}-assets`).innerText = p.assets.length > 0 ? p.assets.join(", ") : "-";
+            });
+        }
+
+        // Oyun Bitiş Ekranı
+        function endGame() {
+            document.getElementById("dice-btn").disabled = true;
+            players.sort((a,b) => b.score - a.score);
+            let winner = players[0];
+            
+            let html = `<h2>🏆 OYUN BİTTİ! 🏆</h2>`;
+            html += `<p style='font-size:1.3rem;'>10 Dakikalık süre doldu!</p>`;
+            html += `<h1 style='color:#ffb300;'>ŞAMPİYON: ${winner.name} (${winner.score} Puan)</h1>`;
+            html += `<hr><p><b>Sıralama:</b></p>`;
+            players.forEach((p, idx) => {
+                html += `<p>${idx+1}. ${p.name} - Puan: ${p.score}</p>`;
+            });
+            
+            document.getElementById("modal-body").innerHTML = html;
+            document.getElementById("modal").style.display = "flex";
+        }
+    </script>
 </body>
 </html>
